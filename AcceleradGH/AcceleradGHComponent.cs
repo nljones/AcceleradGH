@@ -66,7 +66,7 @@ namespace AcceleradGH
         {
             pManager.AddBooleanParameter("Awake", "A", "AcceleradRT is listening for changes", GH_ParamAccess.item, false);
             pManager.AddVectorParameter("Sun Vector", "S", "Direction to sun", GH_ParamAccess.item, solar);
-            pManager.AddIntegerParameter("Interval", "I", "Time interval between checks (milliseconds)", GH_ParamAccess.item, 1000);
+            //pManager.AddIntegerParameter("Interval", "I", "Time interval between checks (milliseconds)", GH_ParamAccess.item, 1000);
         }
 
         /// <summary>
@@ -96,9 +96,10 @@ namespace AcceleradGH
             if (timeChanged)
                 solar = sun;
 
-            int interval = 1000;
-            DA.GetData(2, ref interval);
-            trampoline.Interval = interval;
+            //int interval = 1000;
+            //DA.GetData(2, ref interval);
+            //trampoline.Interval = interval;
+            trampoline.Interval = 1;
 
             bool update = false;
 
@@ -106,7 +107,6 @@ namespace AcceleradGH
             {
                 if (ghDocument == null)
                     ghDocument = this.OnPingDocument();
-                ghDocument.SolutionEnd += documentSolutionEnd;
 
                 if (!state)
                 {
@@ -129,6 +129,9 @@ namespace AcceleradGH
                 {
                     update = doUpdate || timeChanged;
                 }
+
+                if (update)
+                    ghDocument.SolutionEnd += documentSolutionEnd;
             }
             else if (state)
             {
@@ -235,6 +238,7 @@ namespace AcceleradGH
                 //AcceptIdleTime();
                 modelChanged = false;
                 doUpdate = true;
+                this.ExpireSolution(true);
                 //idleTime.Restart(); // Restart from zero
             }
             //Print("End Command " + e.CommandEnglishName + ": " + e.CommandResult.ToString());
