@@ -20,6 +20,11 @@ namespace AcceleradGH
         protected bool state = false;
 
         /// <summary>
+        /// A command is currently in progress.
+        /// </summary>
+        protected bool inCommand = false;
+
+        /// <summary>
         /// A change has been made to the model during the current command.
         /// </summary>
         protected bool modelChanged = false;
@@ -114,10 +119,12 @@ namespace AcceleradGH
                     RhinoDoc.AddRhinoObject += HandleAddObject;
                     RhinoDoc.DeleteRhinoObject += HandleDeleteObject;
                     RhinoDoc.UndeleteRhinoObject += HandleUndeleteObject;
+                    RhinoDoc.ModifyObjectAttributes += HandleModifyAttributes;
                     //RhinoDoc.PurgeRhinoObject += HandlePurgeObject;
                     //RhinoDoc.ReplaceRhinoObject += HandleReplaceObject;
                     //RhinoDoc.ModifyObjectAttributes += HandleModifyObject;
                     //RhinoDoc.MaterialTableEvent += HandleMaterial;
+                    RhinoDoc.LayerTableEvent += HandleLayer;
 
                     Command.BeginCommand += HandleBeginCommand;
                     Command.EndCommand += HandleEndCommand;
@@ -139,10 +146,12 @@ namespace AcceleradGH
                 RhinoDoc.AddRhinoObject -= HandleAddObject;
                 RhinoDoc.DeleteRhinoObject -= HandleDeleteObject;
                 RhinoDoc.UndeleteRhinoObject -= HandleUndeleteObject;
+                RhinoDoc.ModifyObjectAttributes -= HandleModifyAttributes;
                 //RhinoDoc.PurgeRhinoObject -= HandlePurgeObject;
                 //RhinoDoc.ReplaceRhinoObject -= HandleReplaceObject;
                 //RhinoDoc.ModifyObjectAttributes -= HandleModifyObject;
                 //RhinoDoc.MaterialTableEvent -= HandleMaterial;
+                RhinoDoc.LayerTableEvent -= HandleLayer;
 
                 Command.BeginCommand -= HandleBeginCommand;
                 Command.EndCommand -= HandleEndCommand;
@@ -184,21 +193,29 @@ namespace AcceleradGH
         {
             //if (!modelOpening)
             //{
-                modelChanged = true;
+            handleChange();
             //    Print("Add " + e.TheObject.ObjectType.ToString());
             //}
         }
 
         public void HandleDeleteObject(Object sender, RhinoObjectEventArgs e)
         {
-            modelChanged = true;
+            handleChange();
             //Print("Delete " + e.TheObject.ObjectType.ToString());
         }
 
         public void HandleUndeleteObject(Object sender, RhinoObjectEventArgs e) // Similar to add
         {
-            modelChanged = true;
+            handleChange();
             //Print("Undelete " + e.TheObject.ObjectType.ToString());
+        }
+
+        public void HandleModifyAttributes(Object sender, RhinoModifyObjectAttributesEventArgs e)
+        {
+            if (e.OldAttributes.LayerIndex != e.NewAttributes.LayerIndex)
+            {
+                handleChange();
+            }
         }
 
         //public void HandlePurgeObject(Object sender, RhinoObjectEventArgs e)
@@ -225,23 +242,44 @@ namespace AcceleradGH
         //    Print("Material " + e.Index);
         //}
 
+        public void HandleLayer(Object sender, Rhino.DocObjects.Tables.LayerTableEventArgs e)
+        {
+            if (e.OldState.IsVisible != e.NewState.IsVisible)
+            {
+                handleChange();
+            }
+            //Print("Layer " + e.LayerIndex);
+        }
+
         public void HandleBeginCommand(Object sender, CommandEventArgs e)
         {
+            inCommand = true;
             //EndIdleTime();
             ////PrintDebug("Begin Command " + e.CommandEnglishName);
         }
 
         public void HandleEndCommand(Object sender, CommandEventArgs e)
         {
+            inCommand = false;
             if (e.CommandResult == Result.Success && modelChanged)
             {
                 //AcceptIdleTime();
-                modelChanged = false;
-                doUpdate = true;
-                this.ExpireSolution(true);
+                handleChange();
                 //idleTime.Restart(); // Restart from zero
             }
+            modelChanged = false;
             //Print("End Command " + e.CommandEnglishName + ": " + e.CommandResult.ToString());
+        }
+
+        public void handleChange()
+        {
+            if (inCommand)
+                modelChanged = true;
+            else
+            {
+                doUpdate = true;
+                this.ExpireSolution(true);
+            }
         }
 
         /// <summary>
