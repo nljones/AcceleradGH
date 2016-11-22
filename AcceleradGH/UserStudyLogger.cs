@@ -106,7 +106,7 @@ namespace AcceleradGH
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddBooleanParameter("Run DGP", "R", "Run DGP simulation in DIVA (pass through)", GH_ParamAccess.item);
+            //pManager.AddBooleanParameter("Run DGP", "R", "Run DGP simulation in DIVA (pass through)", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -130,6 +130,9 @@ namespace AcceleradGH
                 DA.GetData(2, ref path);
                 if (path == null) return;
 
+                DialogResult result = MessageBox.Show(string.Format("Your {0}-minute session will begin when you press OK.", minutes), "Start Session", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                if (result != DialogResult.OK) return;
+
                 timer = new Timer();
                 timer.Interval = (int)(minutes * 60 * 1000);
                 timer.Tick += endSession;
@@ -137,6 +140,14 @@ namespace AcceleradGH
                 file = new StreamWriter(path);
                 log("start");
                 timer.Start();
+
+                // Register disk access event handlers
+                //RhinoDoc.NewDocument += HandleNewDocument;
+                RhinoDoc.BeginOpenDocument += HandleBeginOpenDocument;
+                RhinoDoc.EndOpenDocument += HandleEndOpenDocument;
+                RhinoDoc.BeginSaveDocument += HandleBeginSaveDocument;
+                RhinoDoc.EndSaveDocument += HandleEndSaveDocument;
+                //RhinoDoc.CloseDocument += HandleCloseDocument;
 
                 // Register command event handlers
                 RhinoDoc.AddRhinoObject += HandleAddObject;
@@ -188,7 +199,7 @@ namespace AcceleradGH
             DA.GetData(8, ref runDGP);
             if (runDGP)
                 log("run");
-            DA.SetData(0, runDGP); // Pass through
+            //DA.SetData(0, runDGP); // Pass through
 
             double dgp = oldDGP;
             DA.GetData(9, ref dgp);
@@ -201,6 +212,14 @@ namespace AcceleradGH
 
         public void endSession(object sender, EventArgs e)
         {
+            // Unregister disk access event handlers
+            //RhinoDoc.NewDocument -= HandleNewDocument;
+            RhinoDoc.BeginOpenDocument -= HandleBeginOpenDocument;
+            RhinoDoc.EndOpenDocument -= HandleEndOpenDocument;
+            RhinoDoc.BeginSaveDocument -= HandleBeginSaveDocument;
+            RhinoDoc.EndSaveDocument -= HandleEndSaveDocument;
+            //RhinoDoc.CloseDocument -= HandleCloseDocument;
+
             // Unregister command event handlers
             RhinoDoc.AddRhinoObject -= HandleAddObject;
             RhinoDoc.DeleteRhinoObject -= HandleDeleteObject;
@@ -251,6 +270,36 @@ namespace AcceleradGH
         {
             get { return new Guid("{09ee909f-8659-4a13-9e40-1d15e446b599}"); }
         }
+
+        #region Disk Access Event Handlers
+
+        //public void HandleNewDocument(Object sender, DocumentEventArgs e)
+        //{
+        //    EndDiskTime();
+        //    Print("New Document " + e.DocumentId);
+        //}
+
+        public void HandleBeginOpenDocument(Object sender, DocumentEventArgs e)
+        {
+            log("begin open " + e.Document.Name);
+        }
+
+        public void HandleEndOpenDocument(Object sender, DocumentEventArgs e)
+        {
+            log("end open " + e.Document.Name);
+        }
+
+        public void HandleBeginSaveDocument(Object sender, DocumentEventArgs e)
+        {
+            log("begin save " + e.Document.Path);
+        }
+
+        public void HandleEndSaveDocument(Object sender, DocumentEventArgs e)
+        {
+            log("end save " + e.Document.Path);
+        }
+
+        #endregion
 
         #region Command Event Handlers
 
