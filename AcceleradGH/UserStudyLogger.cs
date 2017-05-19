@@ -99,6 +99,7 @@ namespace AcceleradGH
 
             pManager.AddBooleanParameter("Run DGP", "R", "Run DGP simulation in DIVA", GH_ParamAccess.item, false);
             pManager.AddNumberParameter("Daylight Glare Probability", "DGP", "Daylight glare probability from DIVA", GH_ParamAccess.item, -1.0);
+            pManager.AddTextParameter("Simulation Name", "SN", "Simulation name", GH_ParamAccess.item, (string)null);
         }
 
         /// <summary>
@@ -198,7 +199,27 @@ namespace AcceleradGH
             bool runDGP = false;
             DA.GetData(8, ref runDGP);
             if (runDGP)
-                log("run");
+            {
+                bool gotElapsed = false;
+                string name = null;
+                DA.GetData(10, ref name);
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\DIVA\GH_Data\" + name + @"\Glare\" + name + @".bat";
+                    if (File.Exists(path))
+                    {
+                        FileInfo fi = new FileInfo(path);
+                        DateTime modified = fi.LastWriteTime;
+                        if (modified != null)
+                        {
+                            log(string.Format("run {0}", DateTime.Now.Subtract(modified).TotalMilliseconds));
+                            gotElapsed = true;
+                        }
+                    }
+                }
+                if (!gotElapsed)
+                    log("run");
+            }
             //DA.SetData(0, runDGP); // Pass through
 
             double dgp = oldDGP;
